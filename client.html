@@ -1,0 +1,25 @@
+<script>
+    var wsServer = 'ws://123.207.190.86:9501';
+    var websocket = new WebSocket(wsServer);
+    websocket.onopen = function (evt) {
+        console.log("Connected to WebSocket server.");
+        setInterval(ping, 60*1000);
+    };
+
+    websocket.onclose = function (evt) {
+        console.log("Disconnected");
+    };
+
+    websocket.onmessage = function (evt) {
+        console.log('Retrieved data from server: ' + evt.data);
+    };
+
+    websocket.onerror = function (evt, e) {
+        console.log('Error occured: ' + evt.data);
+    };
+
+    function ping(){
+        console.log('ping');
+        websocket.send("ping");
+    }
+</script>
