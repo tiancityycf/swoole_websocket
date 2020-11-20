@@ -1,7 +1,5 @@
 <?php
-/**
- * 第一版本正常运行的
- */
+
 $ws = new Swoole\WebSocket\Server('0.0.0.0', 9501);
 
 //Co::set(['hook_flags'=> SWOOLE_HOOK_ALL]);
@@ -26,46 +24,44 @@ $ws->set(array(
 ));
 
 $newprocess = new Swoole\Process(function ($process) use ($ws) {
-    Co\run(function () use ($ws) {
-        $redis = new Swoole\Coroutine\Redis();
-        $redis->connect('127.0.0.1', 6379, true);
-        $redis->auth("crs1rwoijdvl6rqd83dvN2jaF");
-        if ($redis->subscribe(['msg'])) // 或者使用psubscribe
-        {
-            while ($msg = $redis->recv()) {
-                // msg是一个数组, 包含以下信息
-                // $type # 返回值的类型：显示订阅成功
-                // $name # 订阅的频道名字 或 来源频道名字
-                // $info  # 目前已订阅的频道数量 或 信息内容
-                list($type, $name, $info) = $msg;
-                if ($type == 'subscribe') { // 或psubscribe
-                    // 频道订阅成功消息，订阅几个频道就有几条
-                } else if ($type == 'unsubscribe' && $info == 0) { // 或punsubscribe
-                    break; // 收到取消订阅消息，并且剩余订阅的频道数为0，不再接收，结束循环
-                } else if ($type == 'message') {  // 若为psubscribe，此处为pmessage
+    $redis = new Swoole\Coroutine\Redis();
+    $redis->connect('127.0.0.1', 6379, true);
+    $redis->auth("crs1rwoijdvl6rqd83dvN2jaF");
+    if ($redis->subscribe(['msg'])) // 或者使用psubscribe
+    {
+        while ($msg = $redis->recv()) {
+            // msg是一个数组, 包含以下信息
+            // $type # 返回值的类型：显示订阅成功
+            // $name # 订阅的频道名字 或 来源频道名字
+            // $info  # 目前已订阅的频道数量 或 信息内容
+            list($type, $name, $info) = $msg;
+            if ($type == 'subscribe') { // 或psubscribe
+                // 频道订阅成功消息，订阅几个频道就有几条
+            } else if ($type == 'unsubscribe' && $info == 0) { // 或punsubscribe
+                break; // 收到取消订阅消息，并且剩余订阅的频道数为0，不再接收，结束循环
+            } else if ($type == 'message') {  // 若为psubscribe，此处为pmessage
 //                    var_dump($name); // 打印来源频道名字
-                    var_dump($info); // 打印消息
-                    var_dump(count($ws->connections) . " conns");
-                    foreach ($ws->connections as $fd) {
-                        // 需要先判断是否是正确的websocket连接，否则有可能会push失败
-                        if ($ws->isEstablished($fd)) {
-                            var_dump($fd . " fd");
-                            //向 WebSocket 客户端连接推送数据，长度最大不得超过 2M。
-                            $ws->push($fd, "hello, welcome $info\n");
-                        } else {
-                            var_dump($fd . " fd error");
-                        }
+                var_dump($info); // 打印消息
+                var_dump(count($ws->connections) . " conns");
+                foreach ($ws->connections as $fd) {
+                    // 需要先判断是否是正确的websocket连接，否则有可能会push失败
+                    if ($ws->isEstablished($fd)) {
+                        var_dump($fd . " fd");
+                        //向 WebSocket 客户端连接推送数据，长度最大不得超过 2M。
+                        $ws->push($fd, "hello, welcome $info\n");
+                    } else {
+                        var_dump($fd . " fd error");
                     }
-                    // balabalaba.... // 处理消息
+                }
+                // balabalaba.... // 处理消息
 //                    if ($need_unsubscribe) { // 某个情况下需要退订
 //                        $redis->unsubscribe(); // 继续recv等待退订完成
 //                    }
-                }
             }
         }
-        Co::sleep(1);
-    });
-}, false, 2, 0);
+    }
+    Co::sleep(1);
+}, false, 2, 1);
 $ws->addProcess($newprocess);
 
 //监听WebSocket连接打开事件
